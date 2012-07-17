@@ -62,16 +62,16 @@ class Duedate_Reminder_all < Mailer
     notify_authors = options[:authors] ? options[:authors] : 0 
     mailcopy = options[:cc] ? options[:cc] : nil
 
-    s = ARCondition.new ["#{IssueStatus.table_name}.is_closed = ? AND #{Issue.table_name}.due_date <= ?", false, days.day.from_now.to_date]
-    s << "#{IssueStatus.table_name}.id != 3"
-    s << "#{Issue.table_name}.assigned_to_id IS NOT NULL"
-    s << "#{Project.table_name}.status = #{Project::STATUS_ACTIVE}"
-    s << "#{Issue.table_name}.project_id = #{project.id}" if project
-    s << "#{Issue.table_name}.tracker_id = #{tracker.id}" if tracker
-    s << "#{Issue.table_name}.done_ratio < 100"
+    s = "#{IssueStatus.table_name}.is_closed = ? AND #{Issue.table_name}.due_date <= ?"
+    s << " AND #{IssueStatus.table_name}.id != 3"
+    s << " AND #{Issue.table_name}.assigned_to_id IS NOT NULL"
+    s << " AND #{Project.table_name}.status = #{Project::STATUS_ACTIVE}"
+    s << " AND #{Issue.table_name}.project_id = #{project.id}" if project
+    s << " AND #{Issue.table_name}.tracker_id = #{tracker.id}" if tracker
+    s << " AND #{Issue.table_name}.done_ratio < 100"
     over_due = Array.new
     issues_by_assignee = Issue.find(:all, :include => [:status, :assigned_to, :project, :tracker],
-                                          :conditions => s.conditions
+                                          :conditions => [s, false, days.day.from_now.to_date]
                                     ).group_by(&:assigned_to)
     issues_by_assignee.each do |assignee, issues|
       found=0
@@ -85,13 +85,13 @@ class Duedate_Reminder_all < Mailer
         over_due<<[assignee, "assignee", issues]
       end
     end
-    s = ARCondition.new ["#{IssueStatus.table_name}.is_closed = ? AND #{Issue.table_name}.due_date <= ?", false, days.day.from_now.to_date]
-    s << "#{Project.table_name}.status = #{Project::STATUS_ACTIVE}"
-    s << "#{Issue.table_name}.project_id = #{project.id}" if project
-    s << "#{Issue.table_name}.tracker_id = #{tracker.id}" if tracker
+    s = "#{IssueStatus.table_name}.is_closed = ? AND #{Issue.table_name}.due_date <= ?"
+    s << " AND #{Project.table_name}.status = #{Project::STATUS_ACTIVE}"
+    s << " AND #{Issue.table_name}.project_id = #{project.id}" if project
+    s << " AND #{Issue.table_name}.tracker_id = #{tracker.id}" if tracker
 
     issues_by = Issue.find(:all, :include => [:status, :author, :project, :watchers , :tracker],
-                                          :conditions => s.conditions
+                                          :conditions => [s, false, days.day.from_now.to_date]
                                     )
     issues_by.group_by(&:author).each do |author, issues|
       found=0
@@ -196,4 +196,3 @@ namespace :redmine do
     Duedate_Reminder_all.duedate_reminders_all(options)
   end
 end
-
